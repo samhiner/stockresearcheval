@@ -15,14 +15,17 @@ def addSpace(string,targetSize):
 	if len(string) < targetSize:
 		string += ' '
 		return addSpace(string,targetSize)
-	else:
-		return string
+	
+	return string
 
 #copy down a variable length number
 def getNum(page,position,number):
-	if page[position].isnumeric() or page[position] == '.':
+	if page[position].isnumeric() or page[position] in ['.','B','/',]:
 		number += page[position]
 		return getNum(page,position + 1,number)
+
+	if number == '':
+		number = 'N/A'
 
 	return number
 
@@ -57,6 +60,7 @@ class tickerQuiz:
 		with open('data/brokenstocks.txt','a') as file:
 			file.write(stockList)
 	
+
 	#get a random stock ticker from the list
 	def randomTicker(self):
 		tickerIndex = random.randint(0,len(self.tickerList) - 1)
@@ -71,7 +75,7 @@ class tickerQuiz:
 			self.brokenStocks.append(ticker)
 			return self.randomTicker()
 		
-		self.fidelityHTML = utf8(fidelityHTML[38500:-26750])
+		self.fidelityHTML = utf8(fidelityHTML[38500:-20000])
 
 		if 'Ask<' not in self.fidelityHTML:
 			self.brokenStocks.append(ticker)
@@ -89,11 +93,18 @@ class tickerQuiz:
 
 		return ticker
 
-	#grab and clean online trading info into relevant values
+	#find number on fidelity site based on a nearby text "landmark" and the offset from that landmark
+	def fidelityLookup(self,landmarkStr,offset):
+		landmark = self.fidelityHTML.index(landmarkStr)
+		return getNum(self.fidelityHTML,landmark + offset,'')
+
+	#grab and clean online trading info into relevant values with spacing to work with border
 	def getResearch(self):
-		#find position of string that is always the same # of chars away from price
-		priceLandmark = self.fidelityHTML.index('Ask<')
-		self.stockData['price'] = getNum(self.fidelityHTML,priceLandmark + 81,'')
+		self.stockData['price'] = addSpace(self.fidelityLookup('Ask<',81),15)
+		self.stockData['MktCap'] = addSpace(self.fidelityLookup('Capitalization<',67),15)
+		self.stockData['P/E'] = addSpace(self.fidelityLookup('Months)',49),8)
+		self.stockData['PEG'] = addSpace(self.fidelityLookup('PEG Ratio (5-Year Projected)<',70),8)
+		#print(self.fidelityHTML)
 
 	#get the average analyst rating for a stock
 	def getAnalysis(self,ticker):
@@ -132,9 +143,8 @@ class tickerQuiz:
 		
 		showCounter = addSpace(str(self.counter),2)
 		showTicker = addSpace(ticker,10)
-		showPrice = addSpace(str(self.stockData['price']),15)
 
-		print(self.qSec1 + showCounter + self.qSec2 + showTicker + self.qSec3 + showPrice + self.qSec4 + self.qSec5, end='')
+		print(self.qSec1 + showCounter + self.qSec2 + showTicker + self.qSec3 + self.stockData['price'] + self.qSec4 + self.stockData['MktCap'] + self.qSec5 + self.stockData['P/E'] + self.qSec6 + self.stockData['PEG'] + self.qEnd, end='')
 		opinion = input()
 
 		avgRating = self.getAnalysis(ticker)
@@ -185,7 +195,8 @@ startScreen = '''###############################################################
 #  win the round.                                                     #
 #                                                                     #
 #  There are ten rounds and you will see a scoresheet at the end of   #
-#  the game. *Please be patient, sites can take a while to load*      #
+#  the game. *Please be patient, the sites from which the game grabs  #
+#  data can take a while to load*                                     #
 #                                                                     #
 #######################################################################
 #                                                                     #
@@ -211,10 +222,10 @@ quiz.gameStart = '''#                                                           
 #ISSUE: Test truth of this comment \/
 #can be removed without consquence. mostly just for documentation
 quiz.stockData = { 
-	'Price':'',
-	'P/E':'', #TTM
-	'PEG':'', #Forward 5 year
-	'MktCap':'',
+	#'Price':'',
+	#'P/E':'', #TTM
+	#'PEG':'', #Forward 5 year
+	#'MktCap':'',
 	'Gross Margin':'', #TTM
 	'EPS TTM Growth':'', #TTM vs prior TTM
 	'P/B':'',
@@ -234,12 +245,20 @@ quiz.qSec2 = '''                             #
 #                  Ticker Symbol: '''
 
 quiz.qSec3 = '''                          #
-#                    Stock Price: '''
+#                    Stock Price: $'''
 
-quiz.qSec4 = '''                     #
-#                                                                     #\n'''
+quiz.qSec4 = '''                    #
+#                     Market Cap: $'''
 
-quiz.qSec5 = '''#                    Bullish (1) or Bearish (0)?                      '''
+quiz.qSec5 = '''                    #
+#                P/E Ratio (TTM): '''
+
+quiz.qSec6 = '''                            #
+#             PEG Ratio (5y Fwd): '''
+
+quiz.qEnd = '''                            #
+#                                                                     #
+#                    Bullish (1) or Bearish (0)?                      '''
 
 quiz.aSec1 = '''#                                                                     #
 #######################################################################
